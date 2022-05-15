@@ -1320,19 +1320,8 @@ class KineticsFamily(Database):
             item.template = self.get_reaction_template_labels(item)
             try:
                 new_degeneracy = self.calculate_degeneracy(item)
-
-                if isinstance(entry.data, SurfaceArrhenius):
-                    data = SurfaceArrheniusBEP(
-                        #  analogous to Arrhenius.to_arrhenius_ep
-                        A=deepcopy(data.A),
-                        n=deepcopy(data.n),
-                        alpha=0,
-                        E0=deepcopy(data.Ea),
-                        Tmin=deepcopy(data.Tmin),
-                        Tmax=deepcopy(data.Tmax)
-                    )
-                else:
-                    data = data.to_arrhenius_ep()
+            except:
+                pass
 
             if isinstance(entry.data, SurfaceArrhenius):
                 data = SurfaceArrheniusBEP(
@@ -1368,8 +1357,6 @@ class KineticsFamily(Database):
                 except KeyError:
                     self.rules.entries[new_entry.label] = [new_entry]
                 index += 1
-            except:
-                pass
 
     def get_root_template(self):
         """
