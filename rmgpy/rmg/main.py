@@ -80,7 +80,7 @@ from rmgpy.tools.plot import plot_sensitivity
 from rmgpy.tools.uncertainty import Uncertainty, process_local_results
 from rmgpy.rms import RMSWriter
 from rmgpy.rmg.reactors import Reactor
-from rmgpy.cantera import CanteraWriter
+from rmgpy.cantera_ import CanteraWriter
 
 ################################################################################
 

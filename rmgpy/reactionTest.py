@@ -35,6 +35,7 @@ import unittest
 
 import cantera as ct
 import numpy
+import yaml
 from external.wip import work_in_progress
 from copy import deepcopy
 
@@ -1516,39 +1517,25 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
                                                Molecule(smiles="O"): 6.0, Molecule(smiles="[Ar]"): 0.7,
                                                Molecule(smiles="C"): 2.0, Molecule(smiles="CC"): 3.0}))
 
-        self.ct_troe = ct.Reaction.fromCti('''falloff_reaction('CH3(13) + CH3(13) (+ M) <=> ethane (+ M)',
-                 kf=[(6.770000e+16,'cm3/mol/s'), -1.18, (0.654,'kcal/mol')],
-                 kf0=[(3.400000e+41,'cm6/mol2/s'), -7.03, (2.762,'kcal/mol')],
-                 efficiencies='ethane:3.0 CO2(16):2.0 CH4(15):2.0 Ar:0.7 H2O(27):6.0 H2(2):2.0',
-                 falloff=Troe(A=0.619, T3=73.2, T1=1180.0, T2=10000.0))''')
 
         self.arrheniusBi = Reaction(index=2, reactants=[h, ch4], products=[h2, ch3],
                                     kinetics=Arrhenius(A=(6.6e+08, 'cm^3/(mol*s)'), n=1.62, Ea=(10.84, 'kcal/mol'),
                                                        T0=(1, 'K')))
 
-        self.ct_arrheniusBi = ct.Reaction.fromCti(
-            '''reaction('H(3) + CH4(15) <=> H2(2) + CH3(13)', [(6.600000e+08,'cm3/mol/s'), 1.62, (10.84,'kcal/mol')])''')
-
+ 
         self.arrheniusBi_irreversible = Reaction(index=10, reactants=[h, ch4], products=[h2, ch3],
                                                  kinetics=Arrhenius(A=(6.6e+08, 'cm^3/(mol*s)'), n=1.62,
                                                                     Ea=(10.84, 'kcal/mol'), T0=(1, 'K')),
                                                  reversible=False)
 
-        self.ct_arrheniusBi_irreversible = ct.Reaction.fromCti(
-            '''reaction('H(3) + CH4(15) => H2(2) + CH3(13)', [(6.600000e+08,'cm3/mol/s'), 1.62, (10.84,'kcal/mol')])''')
 
         self.arrheniusMono = Reaction(index=15, reactants=[h2o2], products=[h2, o2],
                                       kinetics=Arrhenius(A=(6.6e+03, '1/s'), n=1.62, Ea=(10.84, 'kcal/mol'),
                                                          T0=(1, 'K')))
 
-        self.ct_arrheniusMono = ct.Reaction.fromCti(
-            '''reaction('H2O2(7) <=> H2(2) + O2(6)', [(6.600000e+03,'1/s'), 1.62, (10.84,'kcal/mol')])''')
-
         self.arrheniusTri = Reaction(index=20, reactants=[h, h, o2], products=[h2o2],
                                      kinetics=Arrhenius(A=(6.6e+08, 'cm^6/(mol^2*s)'), n=1.62, Ea=(10.84, 'kcal/mol'),
                                                         T0=(1, 'K')))
-        self.ct_arrheniusTri = ct.Reaction.fromCti(
-            '''reaction('H(3) + H(3) + O2(6) <=> H2O2(7)', [(6.6e+08, 'cm6/mol2/s'), 1.62, (10.84,'kcal/mol')])''')
 
         self.multiArrhenius = Reaction(index=3, reactants=[oh, ho2], products=[h2o, o2],
                                        kinetics=MultiArrhenius(arrhenius=[
@@ -1557,9 +1544,6 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
                                            Arrhenius(A=(5e+15, 'cm^3/(mol*s)'), n=0, Ea=(17.33, 'kcal/mol'),
                                                      T0=(1, 'K'))]))
 
-        self.ct_multiArrhenius = [ct.Reaction.fromCti('''reaction('OH(4) + HO2(5) <=> H2O(27) + O2(6)', [(1.450000e+13,'cm3/mol/s'), 0.0, (-0.5,'kcal/mol')],
-         options='duplicate')'''), ct.Reaction.fromCti('''reaction('OH(4) + HO2(5) <=> H2O(27) + O2(6)', [(5.000000e+15,'cm3/mol/s'), 0.0, (17.33,'kcal/mol')],
-         options='duplicate')''')]
 
         self.pdepArrhenius = Reaction(index=4, reactants=[ho2, ho2], products=[o2, h2o2],
                                       kinetics=PDepArrhenius(
@@ -1586,11 +1570,6 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
                                           ],
                                       ),
                                       )
-
-        self.ct_pdepArrhenius = ct.Reaction.fromCti('''pdep_arrhenius('HO2(5) + HO2(5) <=> O2(6) + H2O2(7)',
-               [(0.1, 'atm'), (8.800000e+16, 'cm3/mol/s'), -1.05, (6.461,'kcal/mol')],
-               [(1.0, 'atm'), (8.000000e+21,'cm3/mol/s'), -2.39, (11.18,'kcal/mol')],
-               [(10.0, 'atm'), (3.300000e+24,'cm3/mol/s'), -3.04, (15.61,'kcal/mol')])''')
 
         self.multiPdepArrhenius = Reaction(index=5, reactants=[ho2, ch3], products=[o2, ch4],
                                            kinetics=MultiPDepArrhenius(
@@ -1621,32 +1600,11 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
                                            ),
                                            )
 
-        self.ct_multiPdepArrhenius = [ct.Reaction.fromCti('''pdep_arrhenius('HO2(5) + CH3(13) <=> O2(6) + CH4(15)',
-               [(0.001, 'atm'), (9.300000e+10, 'cm3/mol/s'), 0.0, (0.0,'kcal/mol')],
-               [(1.0, 'atm'), (8.000000e+10, 'cm3/mol/s'), 0.0, (0.0,'kcal/mol')],
-               [(3.0, 'atm'), (7.000000e+10, 'cm3/mol/s'), 0.0, (0.0,'kcal/mol')],
-               options='duplicate')'''),
-                                      ct.Reaction.fromCti('''pdep_arrhenius('HO2(5) + CH3(13) <=> O2(6) + CH4(15)',
-               [(0.001, 'atm'), (7.100000e+05, 'cm3/mol/s'), 1.8, (1.133,'kcal/mol')],
-               [(1.0, 'atm'), (8.800000e+05, 'cm3/mol/s'), 1.77, (0.954,'kcal/mol')],
-               [(3.0, 'atm'), (2.900000e+05, 'cm3/mol/s'), 1.9, (0.397,'kcal/mol')],
-               options='duplicate')''')]
-
         self.chebyshev = Reaction(index=6, reactants=[h, ch3], products=[ch4], kinetics=Chebyshev(
             coeffs=[[12.68, 0.3961, -0.05481, -0.003606], [-0.7128, 0.731, -0.0941, -0.008587],
                     [-0.5806, 0.57, -0.05539, -0.01115], [-0.4074, 0.3653, -0.0118, -0.01171],
                     [-0.2403, 0.1779, 0.01946, -0.008505], [-0.1133, 0.0485, 0.03121, -0.002955]],
             kunits='cm^3/(mol*s)', Tmin=(300, 'K'), Tmax=(3000, 'K'), Pmin=(0.001, 'atm'), Pmax=(98.692, 'atm')))
-
-        self.ct_chebyshev = ct.Reaction.fromCti('''chebyshev_reaction('H(3) + CH3(13) (+ M) <=> CH4(15) (+ M)',
-                   Tmin=300.0, Tmax=3000.0,
-                   Pmin=(0.001, 'atm'), Pmax=(98.692, 'atm'),
-                   coeffs=[[ 9.68000e+00,  3.96100e-01, -5.48100e-02, -3.60600e-03],
-                           [-7.12800e-01,  7.31000e-01, -9.41000e-02, -8.58700e-03],
-                           [-5.80600e-01,  5.70000e-01, -5.53900e-02, -1.11500e-02],
-                           [-4.07400e-01,  3.65300e-01, -1.18000e-02, -1.17100e-02],
-                           [-2.40300e-01,  1.77900e-01,  1.94600e-02, -8.50500e-03],
-                           [-1.13300e-01,  4.85000e-02,  3.12100e-02, -2.95500e-03]])''')
 
         self.thirdBody = Reaction(index=7, reactants=[h, h], products=[h2],
                                   kinetics=ThirdBody(
@@ -1657,8 +1615,280 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
                                                     Molecule(smiles="[Ar]"): 0.63, Molecule(smiles="C"): 2.0,
                                                     Molecule(smiles="CC"): 3.0}))
 
-        self.ct_thirdBody = ct.Reaction.fromCti('''three_body_reaction('H(3) + H(3) + M <=> H2(2) + M', [(1.000000e+18,'cm6/mol2/s'), -1.0, (0.0,'kcal/mol')],
-                    efficiencies='CO2(16):0.0 CH4(15):2.0 ethane:3.0 H2O(27):0.0 H2(2):0.0 Ar:0.63')''')
+
+        yaml_def = '''
+        phases:
+        - name: gas
+          thermo: ideal-gas
+          kinetics: gas
+          elements: [O, H, C, Ar]
+          species: [H(3), H2(2), Ar, 'CH4(15)', 'CO2(16)', 'H2O(27)', 'ethane']
+          state: {T: 300.0, P: 1 atm}
+        species:
+        - name: H(3)
+          composition:
+            H: 1.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 4530.901867600916
+            - 5000.0
+            data:
+            - - 2.5000000001661453
+              - -9.783188983347162e-13
+              - 1.2596819512415014e-15
+              - -5.277930593078881e-19
+              - 6.800532658433119e-23
+              - 25472.708111815813
+              - -0.45956624704519783
+            - - 2.500592799020857
+              - -5.115902929824364e-07
+              - 1.6547828950269208e-10
+              - -2.377612448237651e-14
+              - 1.2803471670990132e-18
+              - 25472.158869127587
+              - -0.46333513970140155
+          transport:
+            model: gas
+            geometry: atom
+            diameter: 2.0500000000000003
+            well-depth: 145.00018762466215
+          note: GRI-Mech
+        - name: H2(2)
+          composition:
+            H: 2.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 1962.846619341607
+            - 5000.0
+            data:
+            - - 3.422537375135907
+              - 0.0002866496893314833
+              - -4.146706277029017e-07
+              - 4.275479318620867e-10
+              - -9.381187354420037e-14
+              - -1029.7848997391543
+              - -3.8636474016423277
+            - - 2.742187579688893
+              - 0.0005795394907869701
+              - 1.9720275938082656e-07
+              - -6.41094545701619e-11
+              - 4.960031499670019e-15
+              - -552.0377872570556
+              - 0.41409746704388334
+          transport:
+            model: gas
+            geometry: linear
+            diameter: 2.9200000000000004
+            well-depth: 38.00012796964137
+            polarizability: 0.7900000000000005
+            rotational-relaxation: 280.0
+          note: GRI-Mech
+        - name: Ar
+          composition:
+            Ar: 1.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 4530.901867600916
+            - 5000.0
+            data:
+            - - 2.5000000001661453
+              - -9.783188983347162e-13
+              - 1.2596819512415014e-15
+              - -5.277930593078881e-19
+              - 6.800532658433119e-23
+              - -745.0000000161752
+              - 4.3663036338083305
+            - - 2.500592799020857
+              - -5.115902929824364e-07
+              - 1.6547828950269208e-10
+              - -2.377612448237651e-14
+              - 1.2803471670990132e-18
+              - -745.5492427043948
+              - 4.362534741152127
+          transport:
+            model: gas
+            geometry: atom
+            diameter: 3.3300000000000005
+            well-depth: 136.50054988458677
+          note: GRI-Mech
+        - name: CH4(15)
+          composition:
+            C: 1.0
+            H: 4.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 1084.1078069020866
+            - 5000.0
+            data:
+            - - 4.205422517896672
+              - -0.005355657423880153
+              - 2.5112608600526677e-05
+              - -2.137663165313252e-08
+              - 5.975378647646274e-12
+              - -10161.943621852322
+              - -0.9213055064396248
+            - - 0.9082237909449653
+              - 0.011454154918624613
+              - -4.571777231823375e-06
+              - 8.292007200389659e-10
+              - -5.6632230549856994e-14
+              - -9719.956065874298
+              - 13.99333195440782
+          transport:
+            model: gas
+            geometry: nonlinear
+            diameter: 3.746000000000001
+            well-depth: 141.400440100105
+            polarizability: 2.600000000000002
+            rotational-relaxation: 13.0
+          note: GRI-Mech
+        - name: CO2(16)
+          composition:
+            C: 1.0
+            O: 2.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 988.1842520972972
+            - 5000.0
+            data:
+            - - 3.2779030798870306
+              - 0.00275781754853174
+              - 7.127898540585466e-06
+              - -1.0785494419158867e-08
+              - 4.142293572338548e-12
+              - -48475.60317436775
+              - 5.978556187622619
+            - - 4.550710245450814
+              - 0.0029072866799196347
+              - -1.1464332193452888e-06
+              - 2.2579824749945149e-10
+              - -1.6952668379952472e-14
+              - -48986.00826414973
+              - -1.4566068362659845
+          transport:
+            model: gas
+            geometry: linear
+            diameter: 3.763
+            well-depth: 244.00106224424113
+            polarizability: 2.650000000000001
+            rotational-relaxation: 2.1
+          note: GRI-Mech 
+        - name: H2O(27)
+          composition:
+            H: 2.0
+            O: 1.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 1281.427000385289
+            - 5000.0
+            data:
+            - - 3.9988204173262214
+              - -0.0005548349312132653
+              - 2.767752009914246e-06
+              - -1.5566582575936828e-09
+              - 3.023328309078487e-13
+              - -30274.55689713667
+              - -0.030895787286065245
+            - - 3.1956069328926646
+              - 0.0019523944678669848
+              - -1.6711495624675118e-07
+              - -2.979462755546014e-11
+              - 4.451456960670764e-15
+              - -30068.70356699274
+              - 4.043326898815004
+          transport:
+            model: gas
+            geometry: nonlinear
+            diameter: 2.6050000000000004
+            well-depth: 572.4019516813576
+            dipole: 1.8439999999999999
+            rotational-relaxation: 4.0
+          note: GRI-Mech
+        - name: ethane
+          composition:
+            C: 2.0
+            H: 6.0
+          thermo:
+            model: NASA7
+            reference-pressure: 10000.0
+            temperature-ranges:
+            - 100.0
+            - 981.600129524766
+            - 5000.0
+            data:
+            - - 3.746735827545327
+              - 4.514304989481843e-05
+              - 4.079754284063908e-05
+              - -4.5742970844840745e-08
+              - 1.568495706364532e-11
+              - -11474.072510153239
+              - 4.741296000626355
+            - - 3.346934550045707
+              - 0.016175062337970676
+              - -6.009689264233785e-06
+              - 1.0962363623521483e-09
+              - -7.723160458980634e-14
+              - -12094.184681107809
+              - 3.1041998086666167
+          transport:
+            model: gas
+            geometry: nonlinear
+            diameter: 4.3020000000000005
+            well-depth: 252.30104810022812
+            rotational-relaxation: 1.5
+          note: GRI-Mech
+        reactions: 
+          equation: H(3) + H(3) + M <=> H2(2) + M
+          type: three-body
+          rate-constant:
+            A: 1.000000e+18
+            b: -1.0
+            Ea: 0.0
+          efficiencies:
+            CO2(16): 0.0 
+            CH4(15): 2.0 
+            ethane: 3.0 
+            H2O(27): 0.0 
+            H2(2): 0.0 
+            Ar: 0.63  
+        '''
+
+        gas = ct.Solution(yaml=yaml_def)
+
+
+        self.ct_thirdBody = ct.Reaction.from_yaml( '''
+          equation: H(3) + H(3) + M <=> H2(2) + M
+          type: three-body
+          rate-constant:
+            A: 1000000000000.0002
+            b: -1.0
+            Ea: 0.0 
+          efficiencies:
+            CO2(16): 0.0 
+            CH4(15): 2.0 
+            ethane: 3.0 
+            H2O(27): 0.0 
+            H2(2): 0.0 
+            Ar: 0.63''',
+            gas)      
 
         self.lindemann = Reaction(index=8, reactants=[h, o2], products=[ho2],
                                   kinetics=Lindemann(
@@ -1671,10 +1901,6 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
                                                     Molecule(smiles="C"): 2.0, Molecule(smiles="CC"): 3.0,
                                                     Molecule(smiles="[O][O]"): 6.0}))
 
-        self.ct_lindemann = ct.Reaction.fromCti('''falloff_reaction('H(3) + O2(6) (+ M) <=> HO2(5) (+ M)',
-                 kf=[(1.800000e+10,'cm3/mol/s'), 0.0, (2.385,'kcal/mol')],
-                 kf0=[(6.020000e+14,'cm6/mol2/s'), 0.0, (3.0,'kcal/mol')],
-                 efficiencies='CO2(16):3.5 CH4(15):2.0 ethane:3.0 H2O(27):6.0 O2(6):6.0 H2(2):2.0 Ar:0.5')''')
 
     def test_arrhenius(self):
         """
@@ -1772,25 +1998,8 @@ Thermo group additivity estimation: group(O2s-OsH) + gauche(O2s(RR)) + other(R) 
         ct_third_body = self.thirdBody.to_cantera(self.species_list, use_chemkin_identifier=True)
         self.assertEqual(type(ct_third_body), type(self.ct_thirdBody))
         self.assertEqual(repr(ct_third_body), repr(self.ct_thirdBody))
-        self.assertEqual(str(ct_third_body.rate), str(self.ct_thirdBody.rate))
+        self.assertEqual(ct_third_body.rate.input_data, self.ct_thirdBody.rate.input_data)
         self.assertEqual(ct_third_body.efficiencies, self.ct_thirdBody.efficiencies)
-
-        ct_lindemann = self.lindemann.to_cantera(self.species_list, use_chemkin_identifier=True)
-        self.assertEqual(type(ct_lindemann), type(self.ct_lindemann))
-        self.assertEqual(repr(ct_lindemann), repr(self.ct_lindemann))
-        self.assertEqual(ct_lindemann.efficiencies, self.ct_lindemann.efficiencies)
-        self.assertEqual(str(ct_lindemann.low_rate), str(self.ct_lindemann.low_rate))
-        self.assertEqual(str(ct_lindemann.high_rate), str(self.ct_lindemann.high_rate))
-        self.assertEqual(str(ct_lindemann.falloff), str(self.ct_lindemann.falloff))
-
-        ct_troe = self.troe.to_cantera(self.species_list, use_chemkin_identifier=True)
-        self.assertEqual(type(ct_troe), type(self.ct_troe))
-        self.assertEqual(repr(ct_troe), repr(self.ct_troe))
-        self.assertEqual(ct_troe.efficiencies, self.ct_troe.efficiencies)
-
-        self.assertEqual(str(ct_troe.low_rate), str(self.ct_troe.low_rate))
-        self.assertEqual(str(ct_troe.high_rate), str(self.ct_troe.high_rate))
-        self.assertEqual(str(ct_troe.falloff), str(self.ct_troe.falloff))
 
 
 ################################################################################
