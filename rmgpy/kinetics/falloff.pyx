@@ -230,22 +230,18 @@ cdef class Lindemann(PDepKineticsModel):
         assert isinstance(ct_reaction, ct.FalloffReaction), "Must be a Cantera FalloffReaction object"
 
         ct_reaction.efficiencies = PDepKineticsModel.get_cantera_efficiencies(self, species_list)
-        ct_reaction.high_rate = self.arrheniusHigh.to_cantera_kinetics()
-        ct_reaction.low_rate = self.arrheniusLow.to_cantera_kinetics()
-
-        high_rate = ct.Arrhenius(self.arrheniusHigh._A.value, self.arrheniusHigh._n.value, self.arrheniusHigh._Ea.value)
-        low_rate = ct.Arrhenius(self.arrheniusLow._A.value, self.arrheniusHigh._n.value, self.arrheniusHigh._Ea.value)
-        falloff = []
-        ct_reaction.rate = self.to_cantera_kinetics(low_rate,high_rate,falloff) 
+        ct_reaction.rate = self.to_cantera_kinetics() 
         
 
-
-    def to_cantera_kinetics(self, low, high, falloff): 
+    def to_cantera_kinetics(self): 
         """
-        Converts the Lindemann object to a cantera Lindemann object
+        Converts the Lindemann object to a cantera LindemannRate object
         """
         import cantera as ct
-        return ct.LindemannRate(low, high, falloff)
+
+        high_rate = ct.Arrhenius(self.arrheniusHigh._A.value, self.arrheniusHigh._n.value, self.arrheniusHigh._Ea.value)
+        low_rate = ct.Arrhenius(self.arrheniusLow._A.value, self.arrheniusLow._n.value, self.arrheniusLow._Ea.value)
+        return ct.LindemannRate(low_rate, high_rate, [])
 
 
 ################################################################################
